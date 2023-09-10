@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Мои файлы</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript">
+        function CreateAlert(text, alert_selector, alert_type) {
+            let main_dom = document.querySelector(alert_selector);
+            let alert = document.createElement('div')
+
+            alert.innerHTML = `<div class="alert alert-${alert_type}" role="alert">` + text + '</div>'
+            main_dom.insertAdjacentElement('afterbegin', alert)
+        }
+
+        function DeleteAlert(alert_selector) {
+            var alert = document.querySelector('.alert')
+            if (alert) {
+                alert.remove()
+            }
+        }
+
+        function create_file_tag(item, index) {
+            let item_url = "{% url 'file_detail' '1' %}".replace(/1/, item.id)
+            last_check = `<td class="card-text"></td>`
+            if (item.last_check){
+                let date = new Date(item.last_check).toLocaleString('ru', {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric'
+                    })
+                last_check = `<td class="card-text">${date}</td>`
+            }
+            var badge_status;
+            if (item.status === 'waiting' || item.status === 'in queue') {
+                badge_status = 'secondary'
+            } else {
+                badge_status = item.status
+            }
+            var badge = `<span class="badge badge-${badge_status}">${item.status}</span>`
+            return `<tr>
+                    <td>${index + 1}</td>
+                    <td>${item.file_name}</td>
+                    <td><a href="${item_url}" class="btn btn-outline-primary">Посмотреть отчеты</a></td>
+                    <td>${badge}</td>
+                    <td><a href="${item.raw_file}" class="btn btn-primary">Скачать</a></td>
+                    <td><button type="button" class="btn btn-danger" onclick="deleteFile(` + item.id + `)">Удалить</button></td>
+                    ${last_check}
+                    </tr>`
+        }
+
+        function load_page() {
+            let csrf_token = getCookie('csrftoken')
+            let data = {
+                'csrfmiddlewaretoken': csrf_token,
+            }
+
+
+            fetch("{% url 'file-list' %}", data).then(res => res.json())
+                .then(res => {
+                    t_table = document.querySelector('tbody')
+                    let t_table_html = ''
+                    console.log(t_table)
+                    res.forEach((item, index) => {
+                        console.log(item)
+                        t_table_html += create_file_tag(item, index)
+                    })
+                    console.log('replacing')
+                    t_table.innerHTML = t_table_html
+                })
+        }
+
+        window.onload = load_page;
+
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = jQuery.trim(cookies[i]);
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function deleteFile(id) {
+            DeleteAlert(".alert-place-main > .alert")
+            let csrf_token = getCookie('csrftoken')
+            let authorisation_headers = {'X-CSRFToken': csrf_token}
+            upload_file_url = "{% url 'file-detail' "1"%}".replace(/1/, id)
+            $.ajax({
+                url: upload_file_url,
+                type: 'DELETE',
+                headers: authorisation_headers,
+                success: function (response) {
+                    CreateAlert("Удаление произошло успешно!", ".alert-place-main", "success")
+                    load_page()
+                    console.log(response);
+                },
+                error: function (error) {
+                    CreateAlert("Произошла ошибка, попробуй позже", ".alert-place-main", "warning")
+                    console.log(error);
+                }
+            });
+        }
+    </script>
+    <script>
+        $(document).ready(function () {
+            DeleteAlert("div.alert-place-upload > alert")
+            const dropzone = document.getElementById("dropzone");
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+
+            dropzone.ondragover = function () {
+                this.className = "border rounded p-4 bg-light";
+                return false;
+            };
+
+            dropzone.ondragleave = function () {
+                this.className = "border rounded p-4";
+                return false;
+            };
+
+            dropzone.ondrop = function (event) {
+                event.preventDefault();
+                this.className = "border rounded p-4";
+
+                const file = event.dataTransfer.files[0];
+                fileInput.files = event.dataTransfer.files;
+
+                displayFileInfo(file);
+                enableUploadButton();
+            };
+
+            function displayFileInfo(file) {
+                const fileInfo = document.getElementById("file-info");
+                fileInfo.innerHTML = `
+                    <p><strong>Name:</strong> ${file.name}</p>
+                    <p><strong>Size:</strong> ${formatBytes(file.size)}</p>
+                    <p><strong>Type:</strong> ${file.type}</p>
+                `;
+            }
+
+            function enableUploadButton() {
+                $("#upload-btn").prop("disabled", false);
+            }
+
+            $("#upload-btn").click(function () {
+                DeleteAlert("div.alert-place-upload > alert")
+
+                const file = fileInput.files[0];
+                const formData = new FormData();
+                console.log(fileInput.files, 'file')
+                formData.append("raw_file", file);
+                let csrf_token = getCookie('csrftoken')
+                formData.append('csrfmiddlewaretoken', csrf_token,)
+                let authorisation_headers = {'X-CSRFToken': csrf_token}
+                var select_element = document.querySelector("select");
+                linter = select_element.value
+                formData.append('linter', linter)
+
+                upload_file_url = "{% url 'file-list' %}"
+                $.ajax({
+                    url: upload_file_url,
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: authorisation_headers,
+                    success: function (response) {
+                        load_page()
+                        CreateAlert("Файл успешно загружен!", "div.alert-place-upload", "success")
+                    },
+                    error: function (xhr, status, error) {
+                        console.error(xhr.responseText);
+                        if (xhr && xhr.responseText) {
+                            CreateAlert("Произошла ошибка " + xhr.responseText, 'div.alert-place-upload', "warning")
+                            return
+                        }
+                        CreateAlert("Произошла ошибка попробуйте позже", 'div.alert-place-upload', "warning")
+                    }
+                });
+            });
+
+
+            function formatBytes(bytes, decimals = 2) {
+                if (bytes === 0) {
+                    return '0 Bytes';
+                }
+
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+            }
+        });
+    </script>
+
+</head>
+<body>
+
+<div class="container">
+    <div class="row">
+        <div class="col-10">
+            <br>
+            <br>
+            <h1>Здравствуйте {{ request.user }}!</h1>
+            <br>
+        </div>
+        <div class="col-10">
+            <br>
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Загружайте файлы!</h4>
+                    <div id="dropzone" class="border rounded p-4">
+                        <p class="text-center text-muted">Перетащите файлы сюда</p>
+                    </div>
+                    <div id="file-info" class="mt-3"></div>
+                    <button id="upload-btn" class="btn btn-primary mt-3" disabled>Загрузить файл</button>
+                    Выбор линтера <select class="form-select" aria-label="Default select example">
+                    <option selected value="flake8">flake8</option>
+                    <option value="ruff">ruff</option>
+                    <option value="mypy">mypy</option>
+
+                </select>
+                </div>
+            </div>
+            <br>
+            <div class="alert-place-upload"></div>
+        </div>
+        <div class="col-10">
+            <br>
+            <h2>Мои файлы</h2>
+            <div class="alert-place-main"></div>
+            <table class="table table-bordered">
+                <thead>
+                <tr>
+                    <th>Номер файла</th>
+                    <th>Название файла</th>
+                    <th>Отчеты</th>
+                    <th>Статус</th>
+                    <th>Скачать</th>
+                    <th>Удалить</th>
+                    <th>Последняя проверка</th>
+                </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

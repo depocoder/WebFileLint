@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет</title>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            let btn = document.querySelector('button[type="submit"]')
+            btn.addEventListener('click', async function (e) {
+                let response_json = null;
+                let error_message;
+                e.preventDefault();
+                let response = await fetch("{% url 'login_api' %}", {
+                        method: "POST",
+                        body: new FormData(document.querySelector('form'))
+                    }
+                )
+                var alert = document.querySelector('.alert-danger')
+                if (alert) {
+                    alert.remove()
+                }
+
+                if (response.ok) {
+                    window.location.href = "{% url 'home_page' %}";
+                } else {
+                    try {
+                        response_json = await response.json();
+                    } catch (e){
+                    }
+                    console.log(response_json)
+                    let main_dom = document.querySelector('div.alert-place');
+                    let alert = document.createElement('div')
+                    if (response_json && response_json['error_message']) {
+                        error_message = response_json['error_message'];
+                    } else {
+                        error_message = 'Произошла непредвиденная ошибка!'
+                    }
+                    alert.innerHTML = '<div class="alert alert-danger" role="alert">' + error_message + '</div>'
+                    main_dom.insertAdjacentElement('afterbegin', alert)
+                }
+
+            })
+        })
+    </script>
+</head>
+<body>
+<div class="container">
+    <br>
+    <br>
+    <div class="alert-place"></div>
+    <h2>Авторизация пользователя</h2>
+    <form method="post" action="{% url 'login_api' %}">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="email" class="form-label">Email:</label>
+            <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Пароль:</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Авторизоваться</button>
+
+    </form>
+    <br>
+    <br>
+    <div class="mb-3">
+        <a href="{% url 'register_view' %}">
+            <button class="btn btn-secondary">Еще не зарегестрированы? Нажмите на кнопку!
+            </button>
+        </a>
+    </div>
+
+</div>
+</body>
+</html>

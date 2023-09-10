@@ -1,0 +1,94 @@
+version: '3.2'
+
+services:
+  backend_file_lint:
+    container_name: backend_file_lint
+    build:
+        context: backend
+    image: backend_file_lint-python-app:last_build
+    restart: always
+    command: sh -c "poetry run gunicorn conf.wsgi:application --bind 0.0.0.0:8000"
+    depends_on:
+      - db
+    volumes:
+      - static:/lint_checker/static
+      - media:/lint_checker/media
+      - ./logs:/lint_checker/logs
+    env_file:
+      - .env
+
+  db:
+    container_name: db_file_lint
+    image: postgres:13.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=lint_checker
+      - POSTGRES_PASSWORD=lint_checker
+      - POSTGRES_DB=lint_checker
+    volumes:
+      - post_data:/var/lib/postgresql/data/
+    ports:
+      - "127.0.0.1:5432:5432"
+    env_file:
+       - .env
+
+  nginx:
+    image: nginx:1.19.4-alpine
+    container_name: nginx_file_lint
+    restart: always
+    volumes:
+      - media:/media
+      - static:/static
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./logs:/usr/share/nginx/logs
+    ports:
+      - "80:80"
+    depends_on:
+      - backend_file_lint
+
+  rabbitmq_server:
+    container_name: rabbitmq_file_lint
+    image: rabbitmq:3-management
+    ports:
+      - "127.0.0.1:5672:5672"
+
+  mail_worker:
+    container_name: mail_worker_file_lint
+    image: backend_file_lint-python-app:last_build
+    command: bash -c "celery -A conf worker -l INFO -Q mail_notififcation_queue -n celery_mail"
+    volumes:
+      - static:/lint_checker/static
+      - media:/lint_checker/media
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq_server
+
+  schedule_worker:
+    container_name: schedule_worker_file_lint
+    image: backend_file_lint-python-app:last_build
+    command: bash -c "celery -A conf worker -l INFO -B -n celery_schedule"
+    volumes:
+      - static:/lint_checker/static
+      - media:/lint_checker/media
+    env_file:
+       - .env
+    depends_on:
+      - rabbitmq_server
+
+  flower:
+    container_name: flower_file_lint
+    image: backend_file_lint-python-app:last_build
+    command: bash -c "celery flower"
+    environment:
+      - CELERY_BROKER_URL=amqp://rabbitmq_server:5672
+      - FLOWER_PORT=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - rabbitmq_server
+
+volumes:
+  post_data:
+  static:
+  media:
