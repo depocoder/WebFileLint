@@ -4,6 +4,8 @@
 
 Видео демонстрация функционала [ссылка](https://gist.github.com/depocoder/a965eb56786849e85282a87ed531f853).
 
+[Тестовое по которому делалось задание](https://depocoder.notion.site/e4cbcea4f32e4fe28b1e37b884270395?pvs=4)
+
 ## Запуск с Docker
 
 Настройте бэкенд:
