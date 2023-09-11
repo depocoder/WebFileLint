@@ -46,5 +46,5 @@ docker exec -it backend_file_lint python manage.py createsuperuser
 ```
 ## Запуск тестов
 ```shell
-docker exec star_burger_web python manage.py test
+docker exec backend_file_lint python manage.py test
 ```
