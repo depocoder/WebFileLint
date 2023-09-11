@@ -59,7 +59,7 @@ class FileViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def create(self, request, *args, **kwargs):
-        fields = ["url", "file_name", "raw_file", "last_check", "status", "user"]
+        fields = ["id", "url", "file_name", "raw_file", "last_check", "status", "user"]
         request = self.edit_request(request)
         serializer = self.get_serializer(data=request.data, fields=fields)
         serializer.is_valid(raise_exception=True)
