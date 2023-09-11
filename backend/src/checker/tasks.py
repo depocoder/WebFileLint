@@ -4,7 +4,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from checker.models import File, LintFile
-from checker.utils import lint_check, send_email, send_task_in_rabbitmq
+from checker.utils import lint_check, send_email, send_message_in_rabbitmq, prepare_rabbitmq_message
 from conf.celery import app
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,11 @@ def regular_checking():
         file = lint_file.raw_file
         try:
             lint_check(lint_file, file)
-            send_task_in_rabbitmq("checker.tasks.send_notification", *(file.user.email, lint_file.pk, file.file_name))
+            message = prepare_rabbitmq_message(
+                "checker.tasks.send_notification",
+                *(file.user.email, lint_file.pk, file.file_name)
+            )
+            send_message_in_rabbitmq(message, settings.MAIL_QUEUE)
         except:
             file.status = File.StatusChoice.fail
             file.last_check = timezone.now()

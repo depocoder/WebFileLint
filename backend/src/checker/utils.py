@@ -34,18 +34,21 @@ def lint_check(lint_file: LintFile, file: File):
         logger.info(f"File has been succesfully checked {file=} {lint_file=}")
 
 
-def send_task_in_rabbitmq(task_name, *args):
+def prepare_rabbitmq_message(task_name, *args):
+    body = {"id": str(uuid4), "task": task_name, "args": args}
+    return json.dumps(body)
+
+
+def send_message_in_rabbitmq(message, routing_key):
     try:
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(host=settings.AMQP_HOST, port=settings.AMQP_PORT)
         )
         channel = connection.channel()
 
-        body = {"id": str(uuid4), "task": task_name, "args": args}
-        message = json.dumps(body)
         channel.basic_publish(
             exchange="",
-            routing_key=settings.MAIL_QUEUE,
+            routing_key=routing_key,
             body=message,
             properties=pika.BasicProperties(content_type="application/json"),
         )
